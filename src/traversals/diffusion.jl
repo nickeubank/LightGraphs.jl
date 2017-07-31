@@ -43,19 +43,13 @@ function diffusion(g::AbstractGraph,
     for step in 2:n
         new_infections = Set{T}()
 
-        for i in infected_vertices
-            outn = out_neighbors(g, i)
-            outd = length(outn)
-
-            if outd > 0
-                if normalize
-                    local_p = p / outdegree(g, i)
-                else
-                    local_p = p
-                end
-
-                union!(new_infections, randsubseq(outn, local_p))
-            end
+        # Run one step of diffusion.
+        if normalize
+            spread_one_step_normalized!(g, infected_vertices,
+                                        new_infections, p)
+        else
+            spread_one_step_unnormalized!(g, infected_vertices,
+                                          new_infections, p)
         end
 
         # Record only new infections
@@ -72,6 +66,32 @@ function diffusion(g::AbstractGraph,
 
     return vertices_per_step
 end
+
+function spread_one_step_normalized!(g::AbstractGraph,
+                                     infected_vertices::IntSet,
+                                     new_infections::Set,
+                                     p::Real)
+
+    for i in infected_vertices
+        outn = out_neighbors(g, i)
+        outd = length(outn)
+
+        if outd > 0
+            local_p = p / outdegree(g, i)
+            union!(new_infections, randsubseq(outn, local_p))
+        end
+    end
+end
+
+function spread_one_step_unnormalized!(g::AbstractGraph,
+                                       infected_vertices::IntSet,
+                                       new_infections::Set,
+                                       p::Real)
+    for i in infected_vertices
+        union!(new_infections, randsubseq(out_neighbors(g, i), p))
+    end
+end
+
 
 """
     diffusion_rate(results)
