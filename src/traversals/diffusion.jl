@@ -40,10 +40,13 @@ function diffusion(g::AbstractGraph,
     end
 
     # Run simulation
-    randsubseq_buf = zeros(T, nv(g))
+    neighbors = Vector{T}()
+    likely_infections = Int(round(length(infected_vertices) * (ne(g) / nv(g))))
+    sizehint!(neighbors, likely_infections)
+    probabilities = Vector{Float64}()
+    sizehint!(probabilities, likely_infections)
 
     for step in 2:n
-        new_infections = Set{T}()
 
         for i in infected_vertices
             outn = out_neighbors(g, i)
@@ -56,13 +59,18 @@ function diffusion(g::AbstractGraph,
                     local_p = p
                 end
 
-                randsubseq!(randsubseq_buf, outn, local_p)
-                union!(new_infections, randsubseq_buf)
+                for n in outn
+                    push!(neighbors, n)
+                    push!(probabilities, local_p)
+                end
+
             end
         end
 
         # Record only new infections
-        setdiff!(new_infections, infected_vertices)
+        draws = rand(length(neighbors))
+        new_infections = setdiff(neighbors[draws .< probabilities], infected_vertices)
+
             if !isempty(watch_set)
                 vertices_per_step[step] = T.(collect(intersect(new_infections, watch_set)))
             else
